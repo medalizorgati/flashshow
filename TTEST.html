@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashlight & Location</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@12.0.0"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            background-color: #ff9800;
+            color: white;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Flashlight & Location Tracker</h1>
+    <button id="startButton">Start</button>
+
+    <script>
+     
+         const client = new window.Appwrite.Client();
+        client
+            .setEndpoint("http://localhost/v1") // Replace with your Appwrite URL
+            .setProject("67baeb41000b3b5b4d13"); // Replace with your Project ID
+
+        const databases = new window.Appwrite.Databases(client);
+        const ID = window.Appwrite.ID;
+
+        let stream = null;
+        let track = null;
+
+        async function startProcess() {
+            try {
+                // Request camera access
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                track = stream.getVideoTracks()[0];
+
+                // Enable flashlight
+                await track.applyConstraints({ advanced: [{ torch: true }] });
+
+                // Get and send location
+                getLocation();
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Camera or flashlight access failed.");
+            }
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(sendLocation, handleError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        async function sendLocation(position) {
+            let latitude = position.coords.latitude;
+            let longitude = position.coords.longitude;
+
+            console.log("Location:", latitude, longitude);
+
+            try {
+                const response = await databases.createDocument(
+                    "flashshow", // Your Database ID
+                    "flashaccess", // Your Collection ID
+                    ID.unique(), // Auto-generate a unique document ID
+                    {
+                        latitude: latitude,
+                        longitude: longitude,
+                        timestamp: new Date().toISOString()
+                    }
+                );
+
+                console.log("Location saved:", response);
+                alert("Location saved successfully!");
+            } catch (error) {
+                console.error("Error saving location:", error);
+                alert("Failed to save location.");
+            }
+        }
+
+        function handleError(error) {
+            console.error("Geolocation error:", error);
+            alert("Failed to get location.");
+        }
+
+        // Start process when button is clicked
+        document.getElementById("startButton").addEventListener("click", startProcess);
+    </script>
+
+</body>
+</html>
+
